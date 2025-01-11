@@ -1,0 +1,1235 @@
+{
+    "model": {
+        "type": "FastBEV",
+        "style": "v1",
+        "backbone": {
+            "type": "ResNet",
+            "depth": 18,
+            "num_stages": 4,
+            "out_indices": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "frozen_stages": 1,
+            "norm_cfg": {
+                "type": "BN",
+                "requires_grad": true
+            },
+            "norm_eval": true,
+            "init_cfg": {
+                "type": "Pretrained",
+                "checkpoint": "torchvision://resnet18"
+            },
+            "style": "pytorch"
+        },
+        "neck": {
+            "type": "FPN",
+            "norm_cfg": {
+                "type": "BN",
+                "requires_grad": true
+            },
+            "in_channels": [
+                64,
+                128,
+                256,
+                512
+            ],
+            "out_channels": 64,
+            "num_outs": 4
+        },
+        "neck_fuse": {
+            "in_channels": [
+                256
+            ],
+            "out_channels": [
+                64
+            ]
+        },
+        "neck_3d": {
+            "type": "M2BevNeck",
+            "in_channels": 256,
+            "out_channels": 192,
+            "num_layers": 2,
+            "stride": 2,
+            "is_transpose": false,
+            "fuse": {
+                "in_channels": 1024,
+                "out_channels": 256
+            },
+            "norm_cfg": {
+                "type": "BN",
+                "requires_grad": true
+            }
+        },
+        "seg_head": null,
+        "bbox_head": {
+            "type": "FreeAnchor3DHead",
+            "is_transpose": true,
+            "num_classes": 10,
+            "in_channels": 192,
+            "feat_channels": 192,
+            "num_convs": 0,
+            "use_direction_classifier": true,
+            "pre_anchor_topk": 25,
+            "bbox_thr": 0.5,
+            "gamma": 2.0,
+            "alpha": 0.5,
+            "anchor_generator": {
+                "type": "AlignedAnchor3DRangeGenerator",
+                "ranges": [
+                    [
+                        -50,
+                        -50,
+                        -1.8,
+                        50,
+                        50,
+                        -1.8
+                    ]
+                ],
+                "sizes": [
+                    [
+                        0.866,
+                        2.5981,
+                        1.0
+                    ],
+                    [
+                        0.5774,
+                        1.7321,
+                        1.0
+                    ],
+                    [
+                        1.0,
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        0.4,
+                        0.4,
+                        1
+                    ]
+                ],
+                "custom_values": [
+                    0,
+                    0
+                ],
+                "rotations": [
+                    0,
+                    1.57
+                ],
+                "reshape_out": true
+            },
+            "assigner_per_size": false,
+            "diff_rad_by_sin": true,
+            "dir_offset": 0.7854,
+            "dir_limit_offset": 0,
+            "bbox_coder": {
+                "type": "DeltaXYZWLHRBBoxCoder",
+                "code_size": 9
+            },
+            "loss_cls": {
+                "type": "FocalLoss",
+                "use_sigmoid": true,
+                "gamma": 2.0,
+                "alpha": 0.25,
+                "loss_weight": 1.0
+            },
+            "loss_bbox": {
+                "type": "SmoothL1Loss",
+                "beta": 0.1111111111111111,
+                "loss_weight": 0.8
+            },
+            "loss_dir": {
+                "type": "CrossEntropyLoss",
+                "use_sigmoid": false,
+                "loss_weight": 0.8
+            }
+        },
+        "multi_scale_id": [
+            0
+        ],
+        "n_voxels": [
+            [
+                200,
+                200,
+                4
+            ]
+        ],
+        "voxel_size": [
+            [
+                0.5,
+                0.5,
+                1.5
+            ]
+        ],
+        "train_cfg": {
+            "assigner": {
+                "type": "MaxIoUAssigner",
+                "iou_calculator": {
+                    "type": "BboxOverlapsNearest3D"
+                },
+                "pos_iou_thr": 0.6,
+                "neg_iou_thr": 0.3,
+                "min_pos_iou": 0.3,
+                "ignore_iof_thr": -1
+            },
+            "allowed_border": 0,
+            "code_weight": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                0.2,
+                0.2
+            ],
+            "pos_weight": -1,
+            "debug": false
+        },
+        "test_cfg": {
+            "score_thr": 0.05,
+            "min_bbox_size": 0,
+            "nms_pre": 1000,
+            "max_num": 500,
+            "use_scale_nms": true,
+            "use_tta": false,
+            "nms_across_levels": false,
+            "use_rotate_nms": true,
+            "nms_thr": 0.2,
+            "nms_type_list": [
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "rotate",
+                "circle"
+            ],
+            "nms_thr_list": [
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+                0.5,
+                0.5,
+                0.2
+            ],
+            "nms_radius_thr_list": [
+                4,
+                12,
+                10,
+                10,
+                12,
+                0.85,
+                0.85,
+                0.175,
+                0.175,
+                1
+            ],
+            "nms_rescale_factor": [
+                1.0,
+                0.7,
+                0.55,
+                0.4,
+                0.7,
+                1.0,
+                1.0,
+                4.5,
+                9.0,
+                1.0
+            ]
+        }
+    },
+    "point_cloud_range": [
+        -50,
+        -50,
+        -5,
+        50,
+        50,
+        3
+    ],
+    "class_names": [
+        "car",
+        "truck",
+        "trailer",
+        "bus",
+        "construction_vehicle",
+        "bicycle",
+        "motorcycle",
+        "pedestrian",
+        "traffic_cone",
+        "barrier"
+    ],
+    "dataset_type": "NuScenesMultiView_Map_Dataset2",
+    "data_root": "./data/nuscenes/",
+    "input_modality": {
+        "use_lidar": false,
+        "use_camera": true,
+        "use_radar": false,
+        "use_map": false,
+        "use_external": true
+    },
+    "img_norm_cfg": {
+        "mean": [
+            123.675,
+            116.28,
+            103.53
+        ],
+        "std": [
+            58.395,
+            57.12,
+            57.375
+        ],
+        "to_rgb": true
+    },
+    "data_config": {
+        "src_size": [
+            900,
+            1600
+        ],
+        "input_size": [
+            256,
+            704
+        ],
+        "resize": [
+            -0.06,
+            0.11
+        ],
+        "crop": [
+            -0.05,
+            0.05
+        ],
+        "rot": [
+            -5.4,
+            5.4
+        ],
+        "flip": true,
+        "test_input_size": [
+            256,
+            704
+        ],
+        "test_resize": 0.0,
+        "test_rotate": 0.0,
+        "test_flip": false,
+        "pad": [
+            0,
+            0,
+            0,
+            0
+        ],
+        "pad_divisor": 32,
+        "pad_color": [
+            0,
+            0,
+            0
+        ]
+    },
+    "file_client_args": {
+        "backend": "petrel",
+        "path_mapping": {
+            "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+        }
+    },
+    "train_pipeline": [
+        {
+            "type": "MultiViewPipeline",
+            "sequential": true,
+            "n_images": 6,
+            "n_times": 4,
+            "transforms": [
+                {
+                    "type": "LoadImageFromFile",
+                    "file_client_args": {
+                        "backend": "petrel",
+                        "path_mapping": {
+                            "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "LoadAnnotations3D",
+            "with_bbox": true,
+            "with_label": true,
+            "with_bev_seg": true
+        },
+        {
+            "type": "LoadPointsFromFile",
+            "dummy": true,
+            "coord_type": "LIDAR",
+            "load_dim": 5,
+            "use_dim": 5
+        },
+        {
+            "type": "RandomFlip3D",
+            "flip_2d": false,
+            "sync_2d": false,
+            "flip_ratio_bev_horizontal": 0.5,
+            "flip_ratio_bev_vertical": 0.5,
+            "update_img2lidar": true
+        },
+        {
+            "type": "GlobalRotScaleTrans",
+            "rot_range": [
+                -0.3925,
+                0.3925
+            ],
+            "scale_ratio_range": [
+                0.95,
+                1.05
+            ],
+            "translation_std": [
+                0.05,
+                0.05,
+                0.05
+            ],
+            "update_img2lidar": true
+        },
+        {
+            "type": "RandomAugImageMultiViewImage",
+            "data_config": {
+                "src_size": [
+                    900,
+                    1600
+                ],
+                "input_size": [
+                    256,
+                    704
+                ],
+                "resize": [
+                    -0.06,
+                    0.11
+                ],
+                "crop": [
+                    -0.05,
+                    0.05
+                ],
+                "rot": [
+                    -5.4,
+                    5.4
+                ],
+                "flip": true,
+                "test_input_size": [
+                    256,
+                    704
+                ],
+                "test_resize": 0.0,
+                "test_rotate": 0.0,
+                "test_flip": false,
+                "pad": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "pad_divisor": 32,
+                "pad_color": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        },
+        {
+            "type": "ObjectRangeFilter",
+            "point_cloud_range": [
+                -50,
+                -50,
+                -5,
+                50,
+                50,
+                3
+            ]
+        },
+        {
+            "type": "KittiSetOrigin",
+            "point_cloud_range": [
+                -50,
+                -50,
+                -5,
+                50,
+                50,
+                3
+            ]
+        },
+        {
+            "type": "NormalizeMultiviewImage",
+            "mean": [
+                123.675,
+                116.28,
+                103.53
+            ],
+            "std": [
+                58.395,
+                57.12,
+                57.375
+            ],
+            "to_rgb": true
+        },
+        {
+            "type": "DefaultFormatBundle3D",
+            "class_names": [
+                "car",
+                "truck",
+                "trailer",
+                "bus",
+                "construction_vehicle",
+                "bicycle",
+                "motorcycle",
+                "pedestrian",
+                "traffic_cone",
+                "barrier"
+            ]
+        },
+        {
+            "type": "Collect3D",
+            "keys": [
+                "img",
+                "gt_bboxes",
+                "gt_labels",
+                "gt_bboxes_3d",
+                "gt_labels_3d",
+                "gt_bev_seg"
+            ]
+        }
+    ],
+    "test_pipeline": [
+        {
+            "type": "MultiViewPipeline",
+            "sequential": true,
+            "n_images": 6,
+            "n_times": 4,
+            "transforms": [
+                {
+                    "type": "LoadImageFromFile",
+                    "file_client_args": {
+                        "backend": "petrel",
+                        "path_mapping": {
+                            "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "LoadPointsFromFile",
+            "dummy": true,
+            "coord_type": "LIDAR",
+            "load_dim": 5,
+            "use_dim": 5
+        },
+        {
+            "type": "RandomAugImageMultiViewImage",
+            "data_config": {
+                "src_size": [
+                    900,
+                    1600
+                ],
+                "input_size": [
+                    256,
+                    704
+                ],
+                "resize": [
+                    -0.06,
+                    0.11
+                ],
+                "crop": [
+                    -0.05,
+                    0.05
+                ],
+                "rot": [
+                    -5.4,
+                    5.4
+                ],
+                "flip": true,
+                "test_input_size": [
+                    256,
+                    704
+                ],
+                "test_resize": 0.0,
+                "test_rotate": 0.0,
+                "test_flip": false,
+                "pad": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "pad_divisor": 32,
+                "pad_color": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            "is_train": false
+        },
+        {
+            "type": "KittiSetOrigin",
+            "point_cloud_range": [
+                -50,
+                -50,
+                -5,
+                50,
+                50,
+                3
+            ]
+        },
+        {
+            "type": "NormalizeMultiviewImage",
+            "mean": [
+                123.675,
+                116.28,
+                103.53
+            ],
+            "std": [
+                58.395,
+                57.12,
+                57.375
+            ],
+            "to_rgb": true
+        },
+        {
+            "type": "DefaultFormatBundle3D",
+            "class_names": [
+                "car",
+                "truck",
+                "trailer",
+                "bus",
+                "construction_vehicle",
+                "bicycle",
+                "motorcycle",
+                "pedestrian",
+                "traffic_cone",
+                "barrier"
+            ],
+            "with_label": false
+        },
+        {
+            "type": "Collect3D",
+            "keys": [
+                "img"
+            ]
+        }
+    ],
+    "data": {
+        "samples_per_gpu": 1,
+        "workers_per_gpu": 1,
+        "train": {
+            "type": "CBGSDataset",
+            "dataset": {
+                "type": "NuScenesMultiView_Map_Dataset2",
+                "data_root": "./data/nuscenes/",
+                "pipeline": [
+                    {
+                        "type": "MultiViewPipeline",
+                        "sequential": true,
+                        "n_images": 6,
+                        "n_times": 4,
+                        "transforms": [
+                            {
+                                "type": "LoadImageFromFile",
+                                "file_client_args": {
+                                    "backend": "petrel",
+                                    "path_mapping": {
+                                        "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "LoadAnnotations3D",
+                        "with_bbox": true,
+                        "with_label": true,
+                        "with_bev_seg": true
+                    },
+                    {
+                        "type": "LoadPointsFromFile",
+                        "dummy": true,
+                        "coord_type": "LIDAR",
+                        "load_dim": 5,
+                        "use_dim": 5
+                    },
+                    {
+                        "type": "RandomFlip3D",
+                        "flip_2d": false,
+                        "sync_2d": false,
+                        "flip_ratio_bev_horizontal": 0.5,
+                        "flip_ratio_bev_vertical": 0.5,
+                        "update_img2lidar": true
+                    },
+                    {
+                        "type": "GlobalRotScaleTrans",
+                        "rot_range": [
+                            -0.3925,
+                            0.3925
+                        ],
+                        "scale_ratio_range": [
+                            0.95,
+                            1.05
+                        ],
+                        "translation_std": [
+                            0.05,
+                            0.05,
+                            0.05
+                        ],
+                        "update_img2lidar": true
+                    },
+                    {
+                        "type": "RandomAugImageMultiViewImage",
+                        "data_config": {
+                            "src_size": [
+                                900,
+                                1600
+                            ],
+                            "input_size": [
+                                256,
+                                704
+                            ],
+                            "resize": [
+                                -0.06,
+                                0.11
+                            ],
+                            "crop": [
+                                -0.05,
+                                0.05
+                            ],
+                            "rot": [
+                                -5.4,
+                                5.4
+                            ],
+                            "flip": true,
+                            "test_input_size": [
+                                256,
+                                704
+                            ],
+                            "test_resize": 0.0,
+                            "test_rotate": 0.0,
+                            "test_flip": false,
+                            "pad": [
+                                0,
+                                0,
+                                0,
+                                0
+                            ],
+                            "pad_divisor": 32,
+                            "pad_color": [
+                                0,
+                                0,
+                                0
+                            ]
+                        }
+                    },
+                    {
+                        "type": "ObjectRangeFilter",
+                        "point_cloud_range": [
+                            -50,
+                            -50,
+                            -5,
+                            50,
+                            50,
+                            3
+                        ]
+                    },
+                    {
+                        "type": "KittiSetOrigin",
+                        "point_cloud_range": [
+                            -50,
+                            -50,
+                            -5,
+                            50,
+                            50,
+                            3
+                        ]
+                    },
+                    {
+                        "type": "NormalizeMultiviewImage",
+                        "mean": [
+                            123.675,
+                            116.28,
+                            103.53
+                        ],
+                        "std": [
+                            58.395,
+                            57.12,
+                            57.375
+                        ],
+                        "to_rgb": true
+                    },
+                    {
+                        "type": "DefaultFormatBundle3D",
+                        "class_names": [
+                            "car",
+                            "truck",
+                            "trailer",
+                            "bus",
+                            "construction_vehicle",
+                            "bicycle",
+                            "motorcycle",
+                            "pedestrian",
+                            "traffic_cone",
+                            "barrier"
+                        ]
+                    },
+                    {
+                        "type": "Collect3D",
+                        "keys": [
+                            "img",
+                            "gt_bboxes",
+                            "gt_labels",
+                            "gt_bboxes_3d",
+                            "gt_labels_3d",
+                            "gt_bev_seg"
+                        ]
+                    }
+                ],
+                "classes": [
+                    "car",
+                    "truck",
+                    "trailer",
+                    "bus",
+                    "construction_vehicle",
+                    "bicycle",
+                    "motorcycle",
+                    "pedestrian",
+                    "traffic_cone",
+                    "barrier"
+                ],
+                "modality": {
+                    "use_lidar": false,
+                    "use_camera": true,
+                    "use_radar": false,
+                    "use_map": false,
+                    "use_external": true
+                },
+                "test_mode": false,
+                "with_box2d": true,
+                "box_type_3d": "LiDAR",
+                "ann_file": "data/nuscenes/nuscenes_infos_train_4d_interval3_max60.pkl",
+                "load_interval": 1,
+                "sequential": true,
+                "n_times": 4,
+                "train_adj_ids": [
+                    1,
+                    3,
+                    5
+                ],
+                "speed_mode": "abs_velo",
+                "max_interval": 10,
+                "min_interval": 0,
+                "fix_direction": true,
+                "prev_only": true,
+                "test_adj": "prev",
+                "test_adj_ids": [
+                    1,
+                    3,
+                    5
+                ],
+                "test_time_id": null
+            }
+        },
+        "val": {
+            "type": "NuScenesMultiView_Map_Dataset2",
+            "data_root": "./data/nuscenes/",
+            "pipeline": [
+                {
+                    "type": "MultiViewPipeline",
+                    "sequential": true,
+                    "n_images": 6,
+                    "n_times": 4,
+                    "transforms": [
+                        {
+                            "type": "LoadImageFromFile",
+                            "file_client_args": {
+                                "backend": "petrel",
+                                "path_mapping": {
+                                    "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "type": "LoadPointsFromFile",
+                    "dummy": true,
+                    "coord_type": "LIDAR",
+                    "load_dim": 5,
+                    "use_dim": 5
+                },
+                {
+                    "type": "RandomAugImageMultiViewImage",
+                    "data_config": {
+                        "src_size": [
+                            900,
+                            1600
+                        ],
+                        "input_size": [
+                            256,
+                            704
+                        ],
+                        "resize": [
+                            -0.06,
+                            0.11
+                        ],
+                        "crop": [
+                            -0.05,
+                            0.05
+                        ],
+                        "rot": [
+                            -5.4,
+                            5.4
+                        ],
+                        "flip": true,
+                        "test_input_size": [
+                            256,
+                            704
+                        ],
+                        "test_resize": 0.0,
+                        "test_rotate": 0.0,
+                        "test_flip": false,
+                        "pad": [
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "pad_divisor": 32,
+                        "pad_color": [
+                            0,
+                            0,
+                            0
+                        ]
+                    },
+                    "is_train": false
+                },
+                {
+                    "type": "KittiSetOrigin",
+                    "point_cloud_range": [
+                        -50,
+                        -50,
+                        -5,
+                        50,
+                        50,
+                        3
+                    ]
+                },
+                {
+                    "type": "NormalizeMultiviewImage",
+                    "mean": [
+                        123.675,
+                        116.28,
+                        103.53
+                    ],
+                    "std": [
+                        58.395,
+                        57.12,
+                        57.375
+                    ],
+                    "to_rgb": true
+                },
+                {
+                    "type": "DefaultFormatBundle3D",
+                    "class_names": [
+                        "car",
+                        "truck",
+                        "trailer",
+                        "bus",
+                        "construction_vehicle",
+                        "bicycle",
+                        "motorcycle",
+                        "pedestrian",
+                        "traffic_cone",
+                        "barrier"
+                    ],
+                    "with_label": false
+                },
+                {
+                    "type": "Collect3D",
+                    "keys": [
+                        "img"
+                    ]
+                }
+            ],
+            "classes": [
+                "car",
+                "truck",
+                "trailer",
+                "bus",
+                "construction_vehicle",
+                "bicycle",
+                "motorcycle",
+                "pedestrian",
+                "traffic_cone",
+                "barrier"
+            ],
+            "modality": {
+                "use_lidar": false,
+                "use_camera": true,
+                "use_radar": false,
+                "use_map": false,
+                "use_external": true
+            },
+            "test_mode": true,
+            "with_box2d": true,
+            "box_type_3d": "LiDAR",
+            "ann_file": "data/nuscenes/nuscenes_infos_val_4d_interval3_max60.pkl",
+            "load_interval": 1,
+            "sequential": true,
+            "n_times": 4,
+            "train_adj_ids": [
+                1,
+                3,
+                5
+            ],
+            "speed_mode": "abs_velo",
+            "max_interval": 10,
+            "min_interval": 0,
+            "fix_direction": true,
+            "test_adj": "prev",
+            "test_adj_ids": [
+                1,
+                3,
+                5
+            ],
+            "test_time_id": null
+        },
+        "test": {
+            "type": "NuScenesMultiView_Map_Dataset2",
+            "data_root": "./data/nuscenes/",
+            "pipeline": [
+                {
+                    "type": "MultiViewPipeline",
+                    "sequential": true,
+                    "n_images": 6,
+                    "n_times": 4,
+                    "transforms": [
+                        {
+                            "type": "LoadImageFromFile",
+                            "file_client_args": {
+                                "backend": "petrel",
+                                "path_mapping": {
+                                    "./data/nuscenes/": "public-1424:s3://openmmlab/datasets/detection3d/nuscenes/"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "type": "LoadPointsFromFile",
+                    "dummy": true,
+                    "coord_type": "LIDAR",
+                    "load_dim": 5,
+                    "use_dim": 5
+                },
+                {
+                    "type": "RandomAugImageMultiViewImage",
+                    "data_config": {
+                        "src_size": [
+                            900,
+                            1600
+                        ],
+                        "input_size": [
+                            256,
+                            704
+                        ],
+                        "resize": [
+                            -0.06,
+                            0.11
+                        ],
+                        "crop": [
+                            -0.05,
+                            0.05
+                        ],
+                        "rot": [
+                            -5.4,
+                            5.4
+                        ],
+                        "flip": true,
+                        "test_input_size": [
+                            256,
+                            704
+                        ],
+                        "test_resize": 0.0,
+                        "test_rotate": 0.0,
+                        "test_flip": false,
+                        "pad": [
+                            0,
+                            0,
+                            0,
+                            0
+                        ],
+                        "pad_divisor": 32,
+                        "pad_color": [
+                            0,
+                            0,
+                            0
+                        ]
+                    },
+                    "is_train": false
+                },
+                {
+                    "type": "KittiSetOrigin",
+                    "point_cloud_range": [
+                        -50,
+                        -50,
+                        -5,
+                        50,
+                        50,
+                        3
+                    ]
+                },
+                {
+                    "type": "NormalizeMultiviewImage",
+                    "mean": [
+                        123.675,
+                        116.28,
+                        103.53
+                    ],
+                    "std": [
+                        58.395,
+                        57.12,
+                        57.375
+                    ],
+                    "to_rgb": true
+                },
+                {
+                    "type": "DefaultFormatBundle3D",
+                    "class_names": [
+                        "car",
+                        "truck",
+                        "trailer",
+                        "bus",
+                        "construction_vehicle",
+                        "bicycle",
+                        "motorcycle",
+                        "pedestrian",
+                        "traffic_cone",
+                        "barrier"
+                    ],
+                    "with_label": false
+                },
+                {
+                    "type": "Collect3D",
+                    "keys": [
+                        "img"
+                    ]
+                }
+            ],
+            "classes": [
+                "car",
+                "truck",
+                "trailer",
+                "bus",
+                "construction_vehicle",
+                "bicycle",
+                "motorcycle",
+                "pedestrian",
+                "traffic_cone",
+                "barrier"
+            ],
+            "modality": {
+                "use_lidar": false,
+                "use_camera": true,
+                "use_radar": false,
+                "use_map": false,
+                "use_external": true
+            },
+            "test_mode": true,
+            "with_box2d": true,
+            "box_type_3d": "LiDAR",
+            "ann_file": "data/nuscenes/nuscenes_infos_val_4d_interval3_max60.pkl",
+            "load_interval": 1,
+            "sequential": true,
+            "n_times": 4,
+            "train_adj_ids": [
+                1,
+                3,
+                5
+            ],
+            "speed_mode": "abs_velo",
+            "max_interval": 10,
+            "min_interval": 0,
+            "fix_direction": true,
+            "test_adj": "prev",
+            "test_adj_ids": [
+                1,
+                3,
+                5
+            ],
+            "test_time_id": null
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "lr": 0.0004,
+        "weight_decay": 0.01,
+        "paramwise_cfg": {
+            "custom_keys": {
+                "backbone": {
+                    "lr_mult": 0.1,
+                    "decay_mult": 1.0
+                }
+            }
+        }
+    },
+    "optimizer_config": {
+        "grad_clip": {
+            "max_norm": 35.0,
+            "norm_type": 2
+        }
+    },
+    "lr_config": {
+        "policy": "poly",
+        "warmup": "linear",
+        "warmup_iters": 1000,
+        "warmup_ratio": 1e-06,
+        "power": 1.0,
+        "min_lr": 0,
+        "by_epoch": false
+    },
+    "total_epochs": 20,
+    "checkpoint_config": {
+        "interval": 1
+    },
+    "log_config": {
+        "interval": 10,
+        "hooks": [
+            {
+                "type": "TextLoggerHook"
+            },
+            {
+                "type": "TensorboardLoggerHook"
+            }
+        ]
+    },
+    "evaluation": {
+        "interval": 5
+    },
+    "dist_params": {
+        "backend": "nccl"
+    },
+    "find_unused_parameters": true,
+    "log_level": "INFO",
+    "load_from": "pretrained_models/cascade_mask_rcnn_r18_fpn_coco-mstrain_3x_20e_nuim_bbox_mAP_0.5110_segm_mAP_0.4070.pth",
+    "resume_from": null,
+    "workflow": [
+        [
+            "train",
+            1
+        ]
+    ],
+    "fp16": {
+        "loss_scale": "dynamic"
+    }
+}

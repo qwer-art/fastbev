@@ -1,0 +1,19 @@
+{
+    "config": "configs/fastbev/exp/paper/fastbev_m0_r18_s256x704_v200x200x4_c192_d2_f4.py",
+    "work_dir": "work_dir",
+    "resume_from": null,
+    "load_from": null,
+    "no_validate": false,
+    "gpus": null,
+    "gpu_ids": 0,
+    "seed": 0,
+    "deterministic": false,
+    "options": null,
+    "cfg_options": null,
+    "launcher": "none",
+    "local_rank": 0,
+    "autoscale_lr": false,
+    "wo_wandb": false,
+    "wo_fp16": false,
+    "debug": false
+}

@@ -1,0 +1,8 @@
+{
+    "dataset": "nuscenes",
+    "root_path": "./data/nuscenes",
+    "out_dir": "./data/nuscenes",
+    "extra_tag": "nuscenes",
+    "workers": 10,
+    "version": "v1.0-mini"
+}

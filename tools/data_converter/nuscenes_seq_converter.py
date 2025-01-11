@@ -12,13 +12,16 @@ def add_adj_info():
     max_adj = 60
     sample_num = None
     for set in ['test', 'val', 'train', ]:
-        if set in ['val', 'train']:
+        # if set in ['val', 'train']:
+        if set in ['test']:
             continue
         dataset = pickle.load(open('./data/nuscenes/nuscenes_infos_%s.pkl' % set, 'rb'))
         if set in ['train', 'val']:
-            nuscenes_version = 'v1.0-trainval'
+            # nuscenes_version = 'v1.0-trainval'
+            nuscenes_version = 'v1.0-mini'
         else:
             nuscenes_version = 'v1.0-test'
+        nuscenes_version = 'v1.0-mini'
         dataroot = './data/nuscenes/'
         nuscenes = NuScenes(nuscenes_version, dataroot)
         map_token_to_id = dict()
