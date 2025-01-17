@@ -456,7 +456,12 @@
         "test_cfg": null
     },
     "checkpoint": {
-        "config": "pretrained_models/epoch_20.pth",
-        "distributed": false
+        "config": "pretrained_models/epoch_20.pth"
+    },
+    "eval": {
+        "distributed": false,
+        "show": false,
+        "show_dir": null,
+        "debug": false
     }
 }

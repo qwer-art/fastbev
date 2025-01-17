@@ -20,6 +20,7 @@ if mmdet3d_root is not None and osp.exists(mmdet3d_root):
 from mmdet3d.apis import single_gpu_test, multi_gpu_test
 from mmdet3d.datasets import build_dataloader, build_dataset
 from mmdet3d.models import build_model
+from mmdet.models.builder import *
 from mmdet.apis import  set_random_seed
 from mmdet.datasets import replace_ImageToTensor
 from IPython import embed
@@ -141,7 +142,7 @@ def convert_to_serializable(obj):
         return obj  # 返回原始对象
 
 
-def test_function():
+def serial_test_params():
     params_dict = defaultdict(dict)
 
     # region data_loader
@@ -249,7 +250,6 @@ def test_function():
 
     # region checkpoint_param
     params_dict["checkpoint"]["config"] = convert_to_serializable(args.checkpoint)
-    params_dict["checkpoint"]["distributed"] = convert_to_serializable(distributed)
     # endregion
 
     # region param
@@ -269,27 +269,134 @@ def test_function():
         model.PALETTE = dataset.PALETTE
     # endregion
 
+    params_dict["eval"]["distributed"] = convert_to_serializable(distributed)
+    params_dict["eval"]["show"] = convert_to_serializable(args.show)
+    params_dict["eval"]["show_dir"] = convert_to_serializable(args.show_dir)
+    params_dict["eval"]["debug"] = convert_to_serializable(args.debug)
+
     save_path = osp.join(project_path, "test_dir/test_eval_params.json")
     print(f"save_config_json: {save_path}")
     with open(save_path, 'w') as f:
         json.dump(params_dict, f, indent=4)
 
-
 def main():
-    ### dataloader
-    # 1.cfg.data.test
-    # 2.samples_per_gou
-    # 3.workers_per_gpu
-    # 4.distributed
+    args = parse_args()
 
-    ### model
-    # 1.cfg.model.train_cfg
-    # 2.test_cfg
+    ## dataloader
+    # region dataloader_param
+    assert args.out or args.eval or args.format_only or args.show \
+        or args.show_dir, \
+        ('Please specify at least one operation (save/eval/format/show the '
+         'results / save the results) with the argument "--out", "--eval"'
+         ', "--format-only", "--show" or "--show-dir"')
 
-    ### checkpoint
-    # 1.args.checkpoint
-    print("hello fast_bev")
+    if args.eval and args.format_only:
+        raise ValueError('--eval and --format_only cannot be both specified')
+
+    if args.out is not None and not args.out.endswith(('.pkl', '.pickle')):
+        raise ValueError('The output file must be a pkl file.')
+
+    cfg = Config.fromfile(args.config)
+    if args.cfg_options is not None:
+        cfg.merge_from_dict(args.cfg_options)
+    # import modules from string list.
+    if cfg.get('custom_imports', None):
+        from mmcv.utils import import_modules_from_strings
+        import_modules_from_strings(**cfg['custom_imports'])
+    # set cudnn_benchmark
+    if cfg.get('cudnn_benchmark', False):
+        torch.backends.cudnn.benchmark = True
+
+    cfg.model.pretrained = None
+    # in case the test dataset is concatenated
+    samples_per_gpu = 1
+    if isinstance(cfg.data.test, dict):
+        cfg.data.test.test_mode = True
+        samples_per_gpu = cfg.data.test.pop('samples_per_gpu', 1)
+        if samples_per_gpu > 1:
+            # Replace 'ImageToTensor' to 'DefaultFormatBundle'
+            cfg.data.test.pipeline = replace_ImageToTensor(
+                cfg.data.test.pipeline)
+    elif isinstance(cfg.data.test, list):
+        for ds_cfg in cfg.data.test:
+            ds_cfg.test_mode = True
+        samples_per_gpu = max(
+            [ds_cfg.pop('samples_per_gpu', 1) for ds_cfg in cfg.data.test])
+        if samples_per_gpu > 1:
+            for ds_cfg in cfg.data.test:
+                ds_cfg.pipeline = replace_ImageToTensor(ds_cfg.pipeline)
+
+    # init distributed env first, since logger depends on the dist info.
+    if args.launcher == 'none':
+        distributed = False
+    else:
+        distributed = True
+        init_dist(args.launcher, **cfg.dist_params)
+
+    # set random seeds
+    if args.seed is not None:
+        set_random_seed(args.seed, deterministic=args.deterministic)
+    # endregion
+
+    # build the dataloader
+    dataset = build_dataset(cfg.data.test)
+    data_loader = build_dataloader(
+        dataset,
+        samples_per_gpu=samples_per_gpu,
+        workers_per_gpu=cfg.data.workers_per_gpu,
+        dist=distributed,
+        shuffle=False)
+
+    ## model
+    # region model_param
+    if args.vis:
+        nms_thr = 0.0001
+        try:
+            cfg.model.test_cfg.nms_thr = nms_thr
+        except:
+            print('### imvoxelnet except in train.py ###')
+            cfg.test_cfg.nms_thr = nms_thr
+
+    if args.extrinsic_noise > 0:
+        for i in range(3):
+            print('### test camera extrinsic robustness ###')
+        cfg.model.extrinsic_noise = args.extrinsic_noise
+    cfg.model.train_cfg = None
+    # endregion
+    model = build_model(cfg.model, test_cfg=cfg.get('test_cfg'))
+
+    print(f"cfg_model\n{cfg.model}")
+    print(f"test_cfg\n{cfg.get('test_cfg')}")
+
+    ## checkpoint
+    # region checkpoint_param
+    fp16_cfg = cfg.get('fp16', None)
+    if fp16_cfg is not None:
+        wrap_fp16_model(model)
+    # endregion
+    checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+
+    # region other_param
+    if args.fuse_conv_bn:
+        model = fuse_conv_bn(model)
+    # old versions did not save class info in checkpoints, this walkaround is
+    # for backward compatibility
+    if 'CLASSES' in checkpoint.get('meta', {}):
+        model.CLASSES = checkpoint['meta']['CLASSES']
+    else:
+        model.CLASSES = dataset.CLASSES
+    # palette for visualization in segmentation tasks
+    if 'PALETTE' in checkpoint.get('meta', {}):
+        model.PALETTE = checkpoint['meta']['PALETTE']
+    elif hasattr(dataset, 'PALETTE'):
+        # segmentation dataset has `PALETTE` attribute
+        model.PALETTE = dataset.PALETTE
+    # endregion
+
+    model = MMDataParallel(model, device_ids=[0])
+    outputs = single_gpu_test(model, data_loader, args.show, args.show_dir, debug=args.debug)
+
 
 if __name__ == '__main__':
-    # main()
-    test_function()
+    main()
+    # serial_test_params()

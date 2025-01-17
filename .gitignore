@@ -2,6 +2,7 @@ pretrained_models
 data
 work_dir
 show_dir
+show_dir_backup
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
