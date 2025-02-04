@@ -3,6 +3,7 @@ data
 work_dir
 show_dir
 show_dir_backup
+learn_mmdet
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
